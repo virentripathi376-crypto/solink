@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LaterLinks — Save links for later</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e222b; --border:#2a2f3a;
+    --text:#e8eaf0; --muted:#8b93a3; --accent:#4f8cff; --accent2:#34d399;
+    --danger:#f87171; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:24px 16px 80px}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+  .logo{font-size:22px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:8px}
+  .logo .dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .spacer{flex:1}
+  .btn{
+    background:var(--card2);border:1px solid var(--border);color:var(--text);
+    padding:9px 14px;border-radius:10px;font-size:14px;cursor:pointer;
+    transition:.15s;display:inline-flex;align-items:center;gap:7px;font-weight:600;
+  }
+  .btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),#6aa5ff);border-color:transparent;color:#fff}
+  .btn.green{background:linear-gradient(135deg,#10b981,#34d399);border-color:transparent;color:#04120c}
+  .btn.danger{color:var(--danger)}
+  .btn.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+  input,textarea{
+    width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:11px 13px;font-size:14.5px;font-family:inherit;outline:none;
+  }
+  input:focus,textarea:focus{border-color:var(--accent)}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  .row>.no{flex:0 0 auto}
+  .field{margin-bottom:10px}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .toolbar input{flex:1;min-width:180px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .tag{
+    font-size:12px;padding:4px 10px;border-radius:20px;background:var(--card2);
+    border:1px solid var(--border);color:var(--muted);cursor:pointer;user-select:none;
+  }
+  .tag.active{background:var(--accent);color:#fff;border-color:transparent}
+  .link-item{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;
+    animation:pop .2s ease;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .fav{width:38px;height:38px;border-radius:10px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    background:var(--card2);font-size:18px;font-weight:700;color:var(--accent);overflow:hidden}
+  .fav img{width:100%;height:100%;object-fit:cover}
+  .link-body{flex:1;min-width:0}
+  .link-title{font-weight:700;font-size:15px;cursor:pointer;word-break:break-word}
+  .link-title:hover{color:var(--accent)}
+  .link-url{font-size:12.5px;color:var(--muted);word-break:break-all;margin-top:2px}
+  .link-note{font-size:13.5px;color:var(--text);opacity:.85;margin-top:5px;white-space:pre-wrap}
+  .link-meta{display:flex;gap:8px;align-items:center;margin-top:7px;flex-wrap:wrap}
+  .chip{font-size:11px;padding:3px 9px;border-radius:12px;background:var(--card2);border:1px solid var(--border);color:var(--muted)}
+  .chip.read{color:var(--accent2);border-color:rgba(52,211,153,.35)}
+  .link-actions{display:flex;gap:6px;flex:0 0 auto}
+  .empty{text-align:center;color:var(--muted);padding:50px 20px;font-size:15px}
+  .empty .big{font-size:44px;margin-bottom:10px}
+  .statusbar{
+    display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);
+    margin-bottom:14px;flex-wrap:wrap;
+  }
+  .pill{padding:3px 10px;border-radius:20px;background:var(--card2);border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px}
+  .pill .led{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .pill.on .led{background:var(--accent2)}
+  .syncing .led{background:var(--accent);animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.3}}
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--card);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;
+    max-height:85vh;overflow-y:auto;padding:22px;animation:pop .2s ease}
+  .modal h2{font-size:18px;margin-bottom:14px}
+  .modal p{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:10px}
+  .modal ol{margin:0 0 12px 20px;font-size:13.5px;color:var(--muted);line-height:1.7}
+  .modal code{background:var(--bg);padding:2px 7px;border-radius:6px;font-size:12.5px;color:var(--accent2)}
+  .close-x{float:right;cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+  .divider{height:1px;background:var(--border);margin:16px 0}
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--card2);border:1px solid var(--border);color:var(--text);
+    padding:11px 20px;border-radius:12px;font-size:14px;z-index:100;transition:.3s;
+    box-shadow:0 8px 30px rgba(0,0,0,.4);opacity:0;
+  }
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  @media (max-width:520px){ .row{flex-direction:column} header .btn span.txt{display:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><span class="dot"></span>LaterLinks</div>
+    <div class="spacer"></div>
+    <button class="btn" id="btnSettings" title="Google Drive sync">☁️ <span class="txt">Drive Sync</span></button>
+    <button class="btn" id="btnImport">⬆ Import</button>
+    <button class="btn" id="btnExport">⬇ Export</button>
+  </header>
+
+  <div class="statusbar">
+    <span class="pill" id="drivePill"><span class="led"></span><span id="driveTxt">Drive: not connected</span></span>
+    <span class="pill"><span id="countTxt">0 links</span></span>
+    <span class="pill" id="savedAt" style="display:none"></span>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label>URL</label>
+      <input id="inUrl" placeholder="https://example.com/article" inputmode="url">
+    </div>
+    <div class="field">
+      <label>Title (optional — fetched automatically when possible)</label>
+      <input id="inTitle" placeholder="My saved link">
+    </div>
+    <div class="field">
+      <label>Note (optional)</label>
+      <textarea id="inNote" rows="2" placeholder="Why are you saving this?"></textarea>
+    </div>
+    <div class="field">
+      <label>Tags (comma separated)</label>
+      <input id="inTags" placeholder="articles, videos, shopping">
+    </div>
+    <button class="btn primary" id="btnAdd" style="width:100%;justify-content:center">＋ Save for later</button>
+  </div>
+
+  <div class="toolbar">
+    <input id="inSearch" placeholder="🔍 Search links, notes, tags…">
+    <select id="selSort" class="btn" style="appearance:auto">
+      <option value="new">Newest first</option>
+      <option value="old">Oldest first</option>
+      <option value="az">Title A–Z</option>
+    </select>
+  </div>
+  <div class="tags" id="tagBar"></div>
+  <div style="height:14px"></div>
+  <div id="list"></div>
+</div>
+
+<!-- Settings / Drive modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <span class="close-x" id="modalClose">✕</span>
+    <h2>☁️ Google Drive Sync</h2>
+    <div id="driveNotConnected">
+      <p>Connect your Google Drive to back up your links and access them from any device — the same approach the original LaterLinks app uses. Your data is stored in your own Drive (<code>appDataFolder</code>), invisible to other apps.</p>
+      <div class="field" style="margin-top:10px">
+        <label>Google OAuth Client ID (Web)</label>
+        <input id="inClientId" placeholder="xxxx.apps.googleusercontent.com">
+      </div>
+      <p style="font-size:12.5px">Don't have one? It's free and takes 3 minutes:</p>
+      <ol>
+        <li>Go to <code>console.cloud.google.com</code> → create a project</li>
+        <li>Enable the <code>Google Drive API</code></li>
+        <li>Configure the <code>OAuth consent screen</code> (External, add your Gmail as test user)</li>
+        <li>Create an <code>OAuth Client ID</code> of type <b>Web application</b></li>
+        <li>Add this page's origin (e.g. <code>http://localhost:8000</code>) to <b>Authorized JavaScript origins</b></li>
+        <li>Paste the Client ID above → Sign in</li>
+      </ol>
+      <button class="btn green" id="btnConnect" style="width:100%;justify-content:center">Sign in with Google</button>
+    </div>
+    <div id="driveConnected" style="display:none">
+      <p>Signed in as <b id="driveEmail">…</b></p>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="btnBackup">⬆ Backup to Drive</button>
+        <button class="btn" id="btnRestore">⬇ Restore from Drive</button>
+      </div>
+      <div class="divider"></div>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--text);cursor:pointer">
+        <input type="checkbox" id="chkAuto" style="width:auto"> Auto-sync on every change
+      </label>
+      <div class="divider"></div>
+      <button class="btn danger" id="btnDisconnect">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="fileImport" accept=".json,application/json" style="display:none">
+
+<script>
+/* ================= STATE ================= */
+const LS_DATA='laterlinks.data.v1', LS_SET='laterlinks.settings.v1';
+let bookmarks = load(LS_DATA, []);
+let settings  = load(LS_SET, {clientId:'', autoSync:false});
+let activeTag = null, accessToken = null, tokenClient = null, syncing = false;
+
+function load(k, d){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } }
+function save(){ localStorage.setItem(LS_DATA, JSON.stringify(bookmarks)); touch(); }
+function touch(){ localStorage.setItem('laterlinks.updatedAt', Date.now()); scheduleAutoSync(); }
+function updatedAt(){ return +(localStorage.getItem('laterlinks.updatedAt') || 0); }
+function esc(s){ const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+function normUrl(u){ u=u.trim(); if(u && !/^https?:\/\//i.test(u)) u='https://'+u; return u; }
+
+/* ================= ADD / EDIT / DELETE ================= */
+document.getElementById('btnAdd').onclick = addBookmark;
+document.getElementById('inUrl').addEventListener('keydown', e=>{ if(e.key==='Enter') addBookmark(); });
+
+function addBookmark(){
+  const urlEl=document.getElementById('inUrl');
+  const url=normUrl(urlEl.value);
+  if(!url || !/^https?:\/\/[^\s]+\.[^\s]{2,}/i.test(url)) return toast('Please enter a valid URL');
+  const title=document.getElementById('inTitle').value.trim() || hostOf(url);
+  const note=document.getElementById('inNote').value.trim();
+  const tags=document.getElementById('inTags').value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+  bookmarks.unshift({id:'b'+Date.now()+Math.random().toString(36).slice(2,7), url, title, note, tags,
+    createdAt:Date.now(), read:false, favicon:'https://www.google.com/s2/favicons?domain='+encodeURIComponent(hostOf(url))+'&sz=64'});
+  urlEl.value=''; document.getElementById('inTitle').value=''; document.getElementById('inNote').value=''; document.getElementById('inTags').value='';
+  save(); render(); toast('Saved for later ⏳');
+}
+function hostOf(u){ try{ return new URL(u).hostname.replace(/^www\./,''); }catch(e){ return u; } }
+function del(id){ if(!confirm('Delete this link?')) return; bookmarks=bookmarks.filter(b=>b.id!==id); save(); render(); }
+function toggleRead(id){ const b=bookmarks.find(x=>x.id===id); if(b){ b.read=!b.read; save(); render(); } }
+function openLink(id){ const b=bookmarks.find(x=>x.id===id); if(!b) return; b.read=true; save(); window.open(b.url,'_blank'); render(); }
+
+/* ================= RENDER ================= */
+const listEl=document.getElementById('list'), tagBar=document.getElementById('tagBar');
+document.getElementById('inSearch').addEventListener('input', render);
+document.getElementById('selSort').addEventListener('change', render);
+
+function render(){
+  const q=(document.getElementById('inSearch').value||'').toLowerCase();
+  const sort=document.getElementById('selSort').value;
+  // tag bar
+  const allTags=[...new Set(bookmarks.flatMap(b=>b.tags))].sort();
+  tagBar.innerHTML = allTags.map(t=>`<span class="tag ${t===activeTag?'active':''}" onclick="pickTag('${esc(t)}')">#${esc(t)}</span>`).join('')
+    + (activeTag?`<span class="tag active" onclick="pickTag(null)">✕ clear</span>`:'');
+  // list
+  let items=bookmarks.filter(b=>{
+    if(activeTag && !b.tags.includes(activeTag)) return false;
+    if(!q) return true;
+    return (b.title+' '+b.url+' '+(b.note||'')+' '+b.tags.join(' ')).toLowerCase().includes(q);
+  });
+  items.sort((a,b)=> sort==='old' ? a.createdAt-b.createdAt : sort==='az' ? a.title.localeCompare(b.title) : b.createdAt-a.createdAt);
+  document.getElementById('countTxt').textContent = bookmarks.length+' link'+(bookmarks.length!==1?'s':'');
+  if(!items.length){
+    listEl.innerHTML=`<div class="empty"><div class="big">🗂️</div>${bookmarks.length? 'No matches — try another search or tag.' : 'Nothing saved yet.<br>Paste a link above and hit <b>Save for later</b>.'}</div>`;
+    return;
+  }
+  listEl.innerHTML=items.map(b=>`
+    <div class="link-item">
+      <div class="fav"><img src="${esc(b.favicon||'')}" onerror="this.remove();this.parentElement.textContent='${esc((b.title[0]||'🔗').toUpperCase())}'"></div>
+      <div class="link-body">
+        <div class="link-title" onclick="openLink('${b.id}')">${esc(b.title)}</div>
+        <div class="link-url">${esc(b.url)}</div>
+        ${b.note?`<div class="link-note">${esc(b.note)}</div>`:''}
+        <div class="link-meta">
+          <span class="chip">${new Date(b.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span>
+          ${b.tags.map(t=>`<span class="chip" style="cursor:pointer" onclick="pickTag('${esc(t)}')">#${esc(t)}</span>`).join('')}
+          ${b.read?'<span class="chip read">✓ opened</span>':''}
+        </div>
+      </div>
+      <div class="link-actions">
+        <button class="btn sm" title="Open" onclick="openLink('${b.id}')">↗</button>
+        <button class="btn sm" title="${b.read?'Mark unread':'Mark opened'}" onclick="toggleRead('${b.id}')">${b.read?'◌':'✓'}</button>
+        <button class="btn sm danger" title="Delete" onclick="del('${b.id}')">🗑</button>
+      </div>
+    </div>`).join('');
+}
+function pickTag(t){ activeTag = (activeTag===t)?null:t; render(); }
+
+/* ================= IMPORT / EXPORT ================= */
+document.getElementById('btnExport').onclick=()=>{
+  const blob=new Blob([JSON.stringify({app:'laterlinks',updatedAt:Date.now(),bookmarks},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='laterlinks-bookmarks.json'; a.click();
+  toast('Exported JSON ⬇');
+};
+document.getElementById('btnImport').onclick=()=>document.getElementById('fileImport').click();
+document.getElementById('fileImport').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+      const d=JSON.parse(r.result); const arr=Array.isArray(d)?d:d.bookmarks;
+      if(!Array.isArray(arr)) throw 0;
+      let n=0; arr.forEach(b=>{ if(b&&b.url){ bookmarks.push({id:b.id||'b'+Date.now()+Math.random().toString(36).slice(2,7),
+        url:normUrl(b.url), title:b.title||hostOf(b.url), note:b.note||'', tags:(b.tags||[]).map(String),
+        createdAt:b.createdAt||Date.now(), read:!!b.read, favicon:b.favicon||('https://www.google.com/s2/favicons?domain='+encodeURIComponent(hostOf(normUrl(b.url)))+'&sz=64')}); n++; }});
+      save(); render(); toast('Imported '+n+' links');
+    }catch(err){ toast('Invalid file'); } };
+  r.readAsText(f); e.target.value='';
+};
+
+/* ================= GOOGLE DRIVE SYNC ================= */
+const FILE_NAME='laterlinks-bookmarks.json';
+const SCOPES='https://www.googleapis.com/auth/drive.appdata';
+const modalBg=document.getElementById('modalBg');
+document.getElementById('btnSettings').onclick=()=>{ modalBg.classList.add('open'); refreshDriveUI(); };
+document.getElementById('modalClose').onclick=()=>modalBg.classList.remove('open');
+modalBg.onclick=e=>{ if(e.target===modalBg) modalBg.classList.remove('open'); };
+document.getElementById('inClientId').value=settings.clientId||'';
+document.getElementById('inClientId').oninput=e=>{ settings.clientId=e.target.value.trim(); localStorage.setItem(LS_SET,JSON.stringify(settings)); };
+document.getElementById('chkAuto').onchange=e=>{ settings.autoSync=e.target.checked; localStorage.setItem(LS_SET,JSON.stringify(settings)); };
+
+function refreshDriveUI(){
+  const on=!!accessToken;
+  document.getElementById('driveNotConnected').style.display=on?'none':'block';
+  document.getElementById('driveConnected').style.display=on?'block':'none';
+  const pill=document.getElementById('drivePill'), txt=document.getElementById('driveTxt');
+  pill.classList.toggle('on',on); pill.classList.toggle('syncing',syncing);
+  txt.textContent = syncing?'Syncing…': on?'Drive: connected':'Drive: not connected';
+  document.getElementById('chkAuto').checked=!!settings.autoSync;
+}
+function setSyncing(v){ syncing=v; refreshDriveUI(); }
+
+document.getElementById('btnConnect').onclick=()=>{
+  if(!settings.clientId) return toast('Paste your OAuth Client ID first');
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: settings.clientId, scope: SCOPES,
+    callback: async resp=>{
+      if(resp.error){ toast('Sign-in failed: '+resp.error); return; }
+      accessToken=resp.access_token;
+      try{
+        const info=await gapi('GET','oauth2/v2/userinfo');
+        document.getElementById('driveEmail').textContent=info.email||'Google user';
+      }catch(e){ document.getElementById('driveEmail').textContent='Google user'; }
+      refreshDriveUI(); smartFirstSync();
+    }
+  });
+  tokenClient.requestAccessToken({prompt: accessToken?'':'consent'});
+};
+
+async function gapi(method, path, body, isUpload){
+  const base = isUpload ? 'https://www.googleapis.com/upload/drive/v3/' : 'https://www.googleapis.com/';
+  const res = await fetch(base+path, {
+    method,
+    headers:{ 'Authorization':'Bearer '+accessToken, ...(body&&!isUpload?{'Content-Type':'application/json'}:{}) },
+    body: body ? (isUpload?body:JSON.stringify(body)) : undefined
+  });
+  if(res.status===401){ accessToken=null; refreshDriveUI(); throw new Error('Session expired — sign in again'); }
+  if(!res.ok) throw new Error('Drive error '+res.status+': '+await res.text());
+  return res.status===204 ? {} : res.json();
+}
+async function findRemoteFile(){
+  const r=await gapi('GET',"drive/v3/files?spaces=appDataFolder&q=name='"+FILE_NAME+"'&fields=files(id,modifiedTime)");
+  return r.files && r.files[0];
+}
+async function backupToDrive(){
+  const content=JSON.stringify({app:'laterlinks',updatedAt:Date.now(),bookmarks},null,2);
+  const existing=await findRemoteFile();
+  if(existing){
+    await gapi('PATCH','upload/drive/v3/files/'+existing.id+'?uploadType=media', new Blob([content],{type:'application/json'}), true);
+    return existing.id;
+  }
+  const metadata={name:FILE_NAME, parents:['appDataFolder']};
+  const form=new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)],{type:'application/json'}));
+  form.append('file', new Blob([content],{type:'application/json'}));
+  const res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{
+    method:'POST', headers:{Authorization:'Bearer '+accessToken}, body:form });
+  if(!res.ok) throw new Error('Upload failed: '+await res.text());
+  return (await res.json()).id;
+}
+async function restoreFromDrive(quiet){
+  const f=await findRemoteFile(); if(!f) throw new Error('No backup found in Drive yet');
+  const res=await fetch('https://www.googleapis.com/drive/v3/files/'+f.id+'?alt=media',{headers:{Authorization:'Bearer '+accessToken}});
+  if(!res.ok) throw new Error('Download failed');
+  const d=await res.json(); const arr=Array.isArray(d)?d:d.bookmarks;
+  if(!Array.isArray(arr)) throw new Error('Backup file is corrupted');
+  bookmarks=arr.filter(b=>b&&b.url).map(b=>({...b, tags:(b.tags||[]).map(String)}));
+  save(); render(); if(!quiet) toast('Restored '+bookmarks.length+' links from Drive ⬇');
+}
+async function smartFirstSync(){
+  setSyncing(true);
+  try{
+    const f=await findRemoteFile();
+    if(!f){ await backupToDrive(); toast('First backup created in your Drive ☁️'); }
+    else{
+      const remoteNew = new Date(f.modifiedTime).getTime() > updatedAt();
+      if(remoteNew && (bookmarks.length===0 || confirm('A newer backup exists in Drive ('+new Date(f.modifiedTime).toLocaleString()+'). Restore it and overwrite local links?'))){
+        await restoreFromDrive(true); toast('Synced from Drive ☁️');
+      } else { await backupToDrive(); toast('Backed up to Drive ☁️'); }
+    }
+  }catch(e){ toast(e.message); }
+  setSyncing(false);
+}
+let syncTimer=null;
+function scheduleAutoSync(){
+  if(!accessToken || !settings.autoSync) return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(async()=>{ setSyncing(true); try{ await backupToDrive(); }catch(e){} setSyncing(false); }, 3000);
+}
+document.getElementById('btnBackup').onclick=async()=>{ setSyncing(true); try{ await backupToDrive(); toast('Backed up to Drive ☁️'); }catch(e){ toast(e.message); } setSyncing(false); };
+document.getElementById('btnRestore').onclick=async()=>{ setSyncing(true); try{ await restoreFromDrive(); }catch(e){ toast(e.message); } setSyncing(false); };
+document.getElementById('btnDisconnect').onclick=()=>{
+  if(accessToken) google.accounts.oauth2.revoke(accessToken, ()=>{});
+  accessToken=null; refreshDriveUI(); toast('Signed out of Drive');
+};
+
+/* favicon for existing items missing it */
+bookmarks.forEach(b=>{ if(!b.favicon){ try{ b.favicon='https://www.google.com/s2/favicons?domain='+encodeURIComponent(hostOf(b.url))+'&sz=64'; }catch(e){} } });
+render();
+</script>
+</body>
+</html>

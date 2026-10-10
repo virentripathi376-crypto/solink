@@ -1,0 +1,8 @@
+{
+  "appId": "com.laterlinks.app",
+  "appName": "LaterLinks",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}
